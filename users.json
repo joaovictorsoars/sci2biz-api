@@ -1,0 +1,28 @@
+
+[
+    {
+        "username" : "Zulmara",
+        "email" : "zum@ufrn.br",
+        "password": "zum@123"
+    },
+    {
+        "username" : "Danilo",
+        "email" : "dan@ufrn.br",
+        "password": "dan@123"
+    },
+    {
+        "username" : "Rutileno Gabriel",
+        "email" : "rutileno.silva.702@ufrn.edu.br",
+        "password": "12341234"
+    },
+    {
+        "username" : "Alissa",
+        "email" : "alissa@ufrn.br",
+        "password": "alissa@123"
+    },
+    {
+        "username" : "Kayo",
+        "email" : "kayo@ufrn.br",
+        "password": "kayo@123"
+    }
+]
