@@ -1,0 +1,7 @@
+Criar o login em JWT
+
+com refresh token
+
+criptografia de senha bycript ou argon2
+
+Sem templates, apenas API
