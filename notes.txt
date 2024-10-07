@@ -5,3 +5,10 @@ com refresh token
 criptografia de senha bycript ou argon2
 
 Sem templates, apenas API
+
+
+python manage.py shell
+
+from sci2biz_app.models import Users
+
+Users.objects.all().delete()
