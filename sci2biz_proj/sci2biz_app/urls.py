@@ -11,4 +11,5 @@ urlpatterns = [
     path('update_user/', views.update_user, name='update_user'),
     path('roles/register/', views.register_role, name='register_role'),
     path('get-csrf-token/', views.get_csrf_token, name='get_csrf_token'),
+    path('logged-in/', views.get_user_logged_in, name='logged-in')
 ]

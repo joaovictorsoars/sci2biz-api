@@ -4,7 +4,8 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect
 from sci2biz_app.models import Users, Roles
 from django.contrib.auth.hashers import BCryptSHA256PasswordHasher
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, UntypedToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
@@ -12,13 +13,63 @@ from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
-
+from typing import Tuple, Dict, Union, Any
 
 # Section that handles CSRF token
 
 def get_csrf_token(request):
     csrf_token = get_token(request)
     return JsonResponse({"csrfToken": csrf_token})
+
+# Section DEBUG
+
+def get_user_logged_in(request):
+    if request.method == "GET":
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Decodificar o token
+                decoded_token = UntypedToken(token)
+                user_id = decoded_token.get('user_id')
+                
+                # Obter o usuário a partir do ID
+                user = Users.objects.get(id=user_id)
+                user_info = {
+                    "full_name": user.full_name,
+                    "email": user.email
+                }
+                return JsonResponse({"user": user_info})
+            except (InvalidToken, TokenError):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+            except Users.DoesNotExist:
+                return JsonResponse({"error": "User not found"}, status=404)
+        else:
+            return JsonResponse({"error": "Authorization not provided"}, status=401)
+
+
+def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
+    """Verify the user privileges"""
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+
+        try:
+            # Decodificar o token
+            decoded_token = UntypedToken(token)
+            user_id = decoded_token.get('user_id')
+            user = Users.objects.get(id=user_id)
+            print(user.role_id.role_name)
+            print(user.role_id.role_name=='Admin')
+            print(user.role_id.role_name=='Professor')
+            if user.role_id.role_name not in ['Admin', 'Professor']:
+                return False, {"error":"You don't have permissions to do that", "status":403}
+        except Users.DoesNotExist:
+            return False, {"error":"User not found", "status":404}
+    else:
+        return False, {"error":"Authorization not provided", "status":401}
+
+    return True, ""
 
 
 # Section that handles authentication
@@ -147,38 +198,46 @@ def list_users(request) -> JsonResponse:
 @csrf_protect
 def update_user(request) -> JsonResponse:
     """Update user information."""
-    if request.method == "PUT":
-        try:
-            data = loads(request.body)
-            email = data.get("email")
-            full_name = data.get("full_name")
-            new_email = data.get("new_email")
-            role_name = data.get("role_name")
-            
-            if not email:
-                return JsonResponse({"message": "Email is required"}, status=400)
 
-            user = Users.objects.get(email=email)
+    if request.method == 'PUT':
 
-            if full_name:
-                user.full_name = full_name
-            if new_email:
-                user.email = new_email
-            if role_name:
-                role = Roles.objects.get(role_name=role_name)
-                user.role_id = role
+        boolean, text = verify_user_privileges(request)
+        
+        if boolean:
+            try:
+                data = loads(request.body)
+                email = data.get("email")
+                full_name = data.get("full_name")
+                new_email = data.get("new_email")
+                role_name = data.get("role_name")
+                
+                if not email:
+                    return JsonResponse({"message": "Email is required"}, status=400)
 
-            user.save()
-            return JsonResponse({"message": "User updated successfully"}, status=200)
+                user = Users.objects.get(email=email)
 
-        except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
-        except Roles.DoesNotExist:
-            return JsonResponse({"message": "Role not found"}, status=404)
-        except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"message": str(e)}, status=400)
+                if full_name:
+                    user.full_name = full_name
+                if new_email:
+                    user.email = new_email
+                if role_name:
+                    role = Roles.objects.get(role_name=role_name)
+                    user.role_id = role
+
+                user.save()
+                return JsonResponse({"message": "User updated successfully"}, status=200)
+
+            except Users.DoesNotExist:
+                return JsonResponse({"message": "User not found"}, status=404)
+            except Roles.DoesNotExist:
+                return JsonResponse({"message": "Role not found"}, status=404)
+            except (KeyError, JSONDecodeError):
+                return JsonResponse({"message": "Invalid JSON"}, status=400)
+            except Exception as e:
+                return JsonResponse({"message": str(e)}, status=400)
+        else:
+            if text:
+                return JsonResponse({"error":text["error"]}, status=text["status"])
 
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
@@ -190,23 +249,29 @@ def remove_user(request) -> JsonResponse:
     """Remove a user."""
 
     if request.method == "DELETE":
-        try:
-            data = loads(request.body)
-            email = data.get("email")
 
-            if not email:
-                return JsonResponse({"message": "Email is required"}, status=400)
+        boolean, text = verify_user_privileges(request)
 
-            user = Users.objects.get(email=email)
-            user.delete()
-            return JsonResponse({"message": "User deleted successfully"}, status=200)
+        if boolean:
+            try:
+                data = loads(request.body)
+                email = data.get("email")
 
-        except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
-        except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"message": str(e)}, status=400)
+                if not email:
+                    return JsonResponse({"message": "Email is required"}, status=400)
+
+                user = Users.objects.get(email=email)
+                user.delete()
+                return JsonResponse({"message": "User deleted successfully"}, status=200)
+
+            except Users.DoesNotExist:
+                return JsonResponse({"message": "User not found"}, status=404)
+            except (KeyError, JSONDecodeError):
+                return JsonResponse({"message": "Invalid JSON"}, status=400)
+            except Exception as e:
+                return JsonResponse({"message": str(e)}, status=400)
+        if text:
+                return JsonResponse({"error":text["error"]}, status=text["status"])
 
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
