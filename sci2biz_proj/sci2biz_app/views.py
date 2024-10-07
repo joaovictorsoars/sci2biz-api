@@ -3,7 +3,7 @@ from json import loads, JSONDecodeError
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect
 from sci2biz_app.models import Users, Roles
-from django.contrib.auth.hashers import BCryptSHA256PasswordHasher 
+from django.contrib.auth.hashers import BCryptSHA256PasswordHasher
 
 
 @csrf_protect
@@ -17,9 +17,13 @@ def login(request):
 
             user = Users.objects.get(email=email)
 
-            if not bcrypt.check_password(password, user.password):
+            hasher = BCryptSHA256PasswordHasher()
+
+            if not hasher.verify(password, user.password):
                 return JsonResponse({"message": "Invalid password"}, status=400)
 
+        except Users.DoesNotExist:
+            return JsonResponse({"message": "User not found"}, status=404)
         except (KeyError, JSONDecodeError):
             return JsonResponse({"message": "Invalid JSON"}, status=400)
         except Exception as e:
@@ -28,7 +32,7 @@ def login(request):
         return JsonResponse(
             {
                 "message": "Login successful",
-                "user": {"full_name": full_name, "email": email},
+                "user": {"full_name": user.full_name, "email": user.email},
             },
             status=200,
         )
@@ -46,8 +50,8 @@ def register(request):
             password = data.get("password")
             role_name = data.get("role_name")
 
-            # Hash da senha usando bcrypt
-            hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+            hasher = BCryptSHA256PasswordHasher()
+            hashed_password = hasher.encode(password, hasher.salt())
 
             role_id = Roles.objects.get(role_name=role_name)
 
@@ -55,7 +59,7 @@ def register(request):
                 full_name=full_name,
                 email=email,
                 role_id=role_id,
-                password=hashed_password.decode("utf-8"),
+                password=hashed_password,
             )
             user.save()
 
