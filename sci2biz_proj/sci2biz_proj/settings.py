@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'sci2biz_app',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [

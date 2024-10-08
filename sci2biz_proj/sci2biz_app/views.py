@@ -14,6 +14,16 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from typing import Tuple, Dict, Union, Any
+from rest_framework import viewsets
+from .models import Users
+from .serializers import UserSerializer
+from rest_framework.decorators import api_view
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = Users.objects.all()
+    serializer_class = UserSerializer
+
 
 # Section that handles CSRF token
 
@@ -70,6 +80,7 @@ def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
 
 # Section that handles authentication
 
+@api_view(['POST'])
 @csrf_protect
 def login(request) -> JsonResponse:
     """Login a user."""
@@ -120,6 +131,7 @@ def login(request) -> JsonResponse:
 # Section that handles CRUD operations
 
 #Create
+@api_view(['POST'])
 @csrf_protect
 def register(request) -> JsonResponse:
     """Register a new user."""
@@ -169,6 +181,7 @@ def register(request) -> JsonResponse:
 
 
 #Read
+@api_view(['GET'])
 @csrf_protect
 def list_users(request) -> JsonResponse:
     """List users."""
@@ -188,6 +201,7 @@ def list_users(request) -> JsonResponse:
 
 
 #Update
+@api_view(['PUT'])
 @csrf_protect
 def update_user(request) -> JsonResponse:
     """Update user information."""
@@ -237,6 +251,7 @@ def update_user(request) -> JsonResponse:
 
 
 #Delete
+@api_view(['DELETE'])
 @csrf_protect
 def remove_user(request) -> JsonResponse:
     """Remove a user."""
@@ -270,6 +285,9 @@ def remove_user(request) -> JsonResponse:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
+# Section that handles user active status
+
+@api_view(['PUT'])
 @csrf_protect
 def toggle_user_active_status(request) -> JsonResponse:
     """Toggle user active status."""
@@ -411,7 +429,7 @@ def confirm_password_reset(request, uidb64, token) -> JsonResponse:
 
 
 # Section that handles role registration
-
+@api_view(['POST'])
 @csrf_protect
 def register_role(request):
     if request.method == "POST":
