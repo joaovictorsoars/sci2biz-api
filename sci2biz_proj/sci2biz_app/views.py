@@ -17,7 +17,7 @@ from typing import Tuple, Dict, Union, Any
 from rest_framework import viewsets
 from .models import Users
 from .serializers import UserSerializer
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, schema, authentication_classes, permission_classes
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -77,16 +77,52 @@ def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
 
     return True, ""
 
+# Section that handles token refresh
+@api_view(['POST'])
+@csrf_protect
+def refresh_token(request):
+    """Refresh the user token."""
+    if request.method == "POST":
+        try:
+            refresh_input = request.headers.get('Authorization')
+            if refresh_input and refresh_input.startswith('Bearer '):
+                refresh = refresh_input.split(' ')[1]
+
+                refresh = RefreshToken(refresh)
+
+                user_id = refresh.get('user_id')
+                user = Users.objects.get(id=user_id)
+
+                if user.refresh_token != str(refresh):
+                    return JsonResponse({"message": "Invalid refresh token"}, status=400)
+
+                new_refresh = RefreshToken.for_user(user)
+                user.refresh_token = new_refresh
+                user.save(update_fields=["refresh_token"])
+
+                return JsonResponse({"access_token": str(new_refresh.access_token), "refresh_token": str(new_refresh)}, status=200)
+            else:
+                return JsonResponse({"message": "Refresh token is required"}, status=400)
+
+        except Users.DoesNotExist:
+            return JsonResponse({"message": "User not found"}, status=404)
+        except (KeyError, JSONDecodeError):
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
+        except Exception as e:
+            return JsonResponse({"message": str(e)}, status=400)
+
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 # Section that handles authentication
-
 @api_view(['POST'])
+@permission_classes([])
 @csrf_protect
 def login(request) -> JsonResponse:
     """Login a user."""
     if request.method == "POST":
         try:
-            data = loads(request.body)
+            data = request.data
             email = data.get("email")
             password = data.get("password")
 
@@ -102,8 +138,10 @@ def login(request) -> JsonResponse:
 
             if user.is_active:
                 user.last_login = timezone.now()
-                user.save(update_fields=["last_login"])
                 refresh = RefreshToken.for_user(user)
+                user.refresh_token = refresh
+                user.save(update_fields=["last_login", "refresh_token"])
+
                 return JsonResponse(
                     {
                         "message": "Login successful",
@@ -131,7 +169,6 @@ def login(request) -> JsonResponse:
 # Section that handles CRUD operations
 
 #Create
-@api_view(['POST'])
 @csrf_protect
 def register(request) -> JsonResponse:
     """Register a new user."""
@@ -181,7 +218,6 @@ def register(request) -> JsonResponse:
 
 
 #Read
-@api_view(['GET'])
 @csrf_protect
 def list_users(request) -> JsonResponse:
     """List users."""
@@ -201,7 +237,6 @@ def list_users(request) -> JsonResponse:
 
 
 #Update
-@api_view(['PUT'])
 @csrf_protect
 def update_user(request) -> JsonResponse:
     """Update user information."""
@@ -251,7 +286,6 @@ def update_user(request) -> JsonResponse:
 
 
 #Delete
-@api_view(['DELETE'])
 @csrf_protect
 def remove_user(request) -> JsonResponse:
     """Remove a user."""
@@ -287,7 +321,6 @@ def remove_user(request) -> JsonResponse:
 
 # Section that handles user active status
 
-@api_view(['PUT'])
 @csrf_protect
 def toggle_user_active_status(request) -> JsonResponse:
     """Toggle user active status."""
@@ -429,7 +462,6 @@ def confirm_password_reset(request, uidb64, token) -> JsonResponse:
 
 
 # Section that handles role registration
-@api_view(['POST'])
 @csrf_protect
 def register_role(request):
     if request.method == "POST":

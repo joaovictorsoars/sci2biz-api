@@ -36,6 +36,7 @@ class Users(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(null=False)
     public_id = models.UUIDField(default=uuid4, editable=False, unique=True, null=False)
     password = models.CharField(max_length=255, null=False)
+    refresh_token = models.CharField(max_length=255, null=True)
 
     objects = UserManager()
 
