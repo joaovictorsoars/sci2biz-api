@@ -53,15 +53,11 @@ def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.split(' ')[1]
-
         try:
             # Decodificar o token
             decoded_token = UntypedToken(token)
             user_id = decoded_token.get('user_id')
             user = Users.objects.get(id=user_id)
-            print(user.role_id.role_name)
-            print(user.role_id.role_name=='Admin')
-            print(user.role_id.role_name=='Professor')
             if user.role_id.role_name not in ['Admin', 'Professor']:
                 return False, {"error":"You don't have permissions to do that", "status":403}
         except Users.DoesNotExist:
@@ -75,21 +71,18 @@ def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
 # Section that handles authentication
 
 @csrf_protect
-def login(request):
+def login(request) -> JsonResponse:
+    """Login a user."""
     if request.method == "POST":
         try:
             data = loads(request.body)
-            full_name = data.get("username")
             email = data.get("email")
             password = data.get("password")
 
-            if not full_name or not email or not password:
+            if not email or not password:
                 return JsonResponse({"message": "Missing required fields"}, status=400)
 
             user = Users.objects.get(email=email)
-
-            if user.full_name != full_name:
-                return JsonResponse({"message": "Invalid full name"}, status=400)
 
             hasher = BCryptSHA256PasswordHasher()
 
@@ -276,6 +269,39 @@ def remove_user(request) -> JsonResponse:
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
+
+@csrf_protect
+def toggle_user_active_status(request) -> JsonResponse:
+    """Toggle user active status."""
+
+    if request.method == "PUT":
+
+        boolean, text = verify_user_privileges(request)
+
+        if boolean:
+            try:
+                data = loads(request.body)
+                email = data.get("email")
+
+                if not email:
+                    return JsonResponse({"message": "Email is required"}, status=400)
+
+                user = Users.objects.get(email=email)
+                user.is_active = not user.is_active
+                user.save(update_fields=["is_active"])
+                return JsonResponse({"message": "User active status changed successfully"}, status=200)
+
+            except Users.DoesNotExist:
+                return JsonResponse({"message": "User not found"}, status=404)
+            except (KeyError, JSONDecodeError):
+                return JsonResponse({"message": "Invalid JSON"}, status=400)
+            except Exception as e:
+                return JsonResponse({"message": str(e)}, status=400)
+        if text:
+                return JsonResponse({"error":text["error"]}, status=text["status"])
+
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405) 
 
 
 # Section that handles password reset
