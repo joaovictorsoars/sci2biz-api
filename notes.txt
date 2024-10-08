@@ -12,3 +12,6 @@ python manage.py shell
 from sci2biz_app.models import Users
 
 Users.objects.all().delete()
+
+
+resolver refresh token passando refresh token no header
