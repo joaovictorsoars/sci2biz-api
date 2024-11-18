@@ -15,7 +15,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from typing import Tuple, Dict, Union, Any
 from rest_framework import viewsets
-from .models import Users
+from .models import Users, Demanda
 from .serializers import UserSerializer
 from rest_framework.decorators import api_view, schema, authentication_classes, permission_classes
 
@@ -36,7 +36,7 @@ def get_csrf_token(request):
 def get_user_logged_in(request):
     if request.method == "GET":
         auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
+        if (auth_header and auth_header.startswith('Bearer ')):
             token = auth_header.split(' ')[1]
             try:
                 # Decodificar o token
@@ -61,14 +61,14 @@ def get_user_logged_in(request):
 def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
     """Verify the user privileges"""
     auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith('Bearer '):
+    if (auth_header and auth_header.startswith('Bearer ')):
         token = auth_header.split(' ')[1]
         try:
             # Decodificar o token
             decoded_token = UntypedToken(token)
             user_id = decoded_token.get('user_id')
             user = Users.objects.get(id=user_id)
-            if user.role_id.role_name not in ['Admin', 'Professor']:
+            if (user.role_id.role_name not in ['Admin', 'Professor']):
                 return False, {"error":"You don't have permissions to do that", "status":403}
         except Users.DoesNotExist:
             return False, {"error":"User not found", "status":404}
@@ -85,7 +85,7 @@ def refresh_token(request):
     if request.method == "POST":
         try:
             refresh_input = request.headers.get('Authorization')
-            if refresh_input and refresh_input.startswith('Bearer '):
+            if (refresh_input and refresh_input.startswith('Bearer ')):
                 refresh = refresh_input.split(' ')[1]
 
                 refresh = RefreshToken(refresh)
@@ -93,7 +93,7 @@ def refresh_token(request):
                 user_id = refresh.get('user_id')
                 user = Users.objects.get(id=user_id)
 
-                if user.refresh_token != str(refresh):
+                if (user.refresh_token != str(refresh)):
                     return JsonResponse({"message": "Invalid refresh token"}, status=400)
 
                 new_refresh = RefreshToken.for_user(user)
@@ -126,14 +126,14 @@ def login(request) -> JsonResponse:
             email = data.get("email")
             password = data.get("password")
 
-            if not email or not password:
+            if (not email or not password):
                 return JsonResponse({"message": "Missing required fields"}, status=400)
 
             user = Users.objects.get(email=email)
 
             hasher = BCryptSHA256PasswordHasher()
 
-            if not hasher.verify(password, user.password):
+            if (not hasher.verify(password, user.password)):
                 return JsonResponse({"message": "Invalid password"}, status=400)
 
             if user.is_active:
@@ -180,7 +180,7 @@ def register(request) -> JsonResponse:
             password = data.get("password")
             role_name = data.get("role_name")
 
-            if not full_name or not email or not password or not role_name:
+            if (not full_name or not email or not password or not role_name):
                 return JsonResponse({"message": "Missing required fields"}, status=400)
             
             if Users.objects.filter(email=email).exists():
@@ -367,17 +367,17 @@ def change_password(request) -> JsonResponse:
             current_password = data.get("current_password")
             new_password = data.get("new_password")
 
-            if not email or not current_password or not new_password:
+            if (not email or not current_password or not new_password):
                 return JsonResponse({"message": "Missing required fields"}, status=400)
 
             user = Users.objects.get(email=email)
             hasher = BCryptSHA256PasswordHasher()
 
-            if not hasher.verify(current_password, user.password):
+            if (not hasher.verify(current_password, user.password)):
                 return JsonResponse({"message": "Invalid current password"}, status=400)
 
             # Verifique se a nova senha atende aos requisitos (exemplo simples)
-            if len(new_password) < 8:
+            if (len(new_password) < 8):
                 return JsonResponse({"message": "New password must be at least 8 characters long"}, status=400)
 
             # Atualize a senha do usuário
@@ -476,5 +476,224 @@ def register_role(request):
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
         return JsonResponse({"message": "Role registered", "role_name": role_name})
-    
+
+
+@csrf_protect
+def create_demanda(request) -> JsonResponse:
+    """Create a new Demanda."""
+    if request.method == "POST":
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Decodificar o token
+                decoded_token = UntypedToken(token)
+                user_id = decoded_token.get('user_id')
+                
+                # Obter o usuário a partir do ID
+                user = Users.objects.get(id=user_id)
+                
+                if user.role_id.role_name != 'Professor':
+                    return JsonResponse({"error": "Access denied. Only Professors can create demandas."}, status=403)
+                
+                data = loads(request.body)
+                disciplina = data.get("disciplina")
+                conteudo = data.get("conteudo")
+                tipo_demanda = data.get("tipo_demanda")
+
+                if not disciplina or not conteudo or not tipo_demanda:
+                    return JsonResponse({"message": "Missing required fields"}, status=400)
+
+                tipos_validos = {"Extensão", "Ensino", "Pesquisa"}
+                if not set(tipo_demanda).issubset(tipos_validos):
+                    return JsonResponse({"message": "Invalid tipo_demanda"}, status=400)
+
+                demanda = Demanda(
+                    disciplina=disciplina,
+                    conteudo=conteudo,
+                    indicacao_ativa=False,  # Demanda não ativa até resposta do Administrador
+                    professor_responsavel=user,
+                )
+                demanda.save()
+
+                # Enviar email para o Administrador
+                admin_emails = Users.objects.filter(role_id__role_name='Admin').values_list('email', flat=True)
+                email_subject = 'Nova Demanda Cadastrada'
+                email_body = (
+                    f'Uma nova demanda foi cadastrada por {user.full_name}.\n\n'
+                    f'Disciplina: {disciplina}\n'
+                    f'Conteúdo: {conteudo}\n'
+                    f'Tipo(s) de Demanda: {", ".join(tipo_demanda)}\n\n'
+                    'Por favor, revise a demanda e responda para ativá-la.'
+                )
+                send_mail(
+                    email_subject,
+                    email_body,
+                    settings.DEFAULT_FROM_EMAIL,
+                    admin_emails
+                )
+
+                return JsonResponse({"message": "Demanda created successfully"}, status=201)
+
+            except (InvalidToken, TokenError):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+            except Users.DoesNotExist:
+                return JsonResponse({"error": "User not found"}, status=404)
+            except (KeyError, JSONDecodeError):
+                return JsonResponse({"message": "Invalid JSON"}, status=400)
+            except Exception as e:
+                return JsonResponse({"message": str(e)}, status=400)
+        else:
+            return JsonResponse({"error": "Authorization not provided"}, status=401)
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+@csrf_protect
+def list_demandas(request) -> JsonResponse:
+    """List all Demandas."""
+    if request.method == "GET":
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Decodificar o token
+                decoded_token = UntypedToken(token)
+                user_id = decoded_token.get('user_id')
+                
+                # Obter o usuário a partir do ID
+                user = Users.objects.get(id=user_id)
+                
+                if user.role_id.role_name != 'Admin':
+                    return JsonResponse({"error": "Access denied. Only Admins can access demandas."}, status=403)
+                
+                demandas = Demanda.objects.all().order_by('-data_criacao')
+                demandas_list = [
+                    {
+                        "id": demanda.id,
+                        "disciplina": demanda.disciplina,
+                        "conteudo": demanda.conteudo,
+                        "professor_responsavel": demanda.professor_responsavel.full_name,
+                        **({"indicacao_ativa": demanda.indicacao_ativa,
+                            "fluxo": demanda.fluxo,
+                            "perspectiva": demanda.perspectiva,
+                            "orientacoes_pesquisa": demanda.orientacoes_pesquisa,
+                            "data_criacao": demanda.data_criacao,
+                            "data_resposta": demanda.data_resposta} if demanda.data_resposta else {})
+                    }
+                    for demanda in demandas
+                ]
+                return JsonResponse({"demandas": demandas_list}, status=200)
+            except (InvalidToken, TokenError):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+            except Users.DoesNotExist:
+                return JsonResponse({"error": "User not found"}, status=404)
+        else:
+            return JsonResponse({"error": "Authorization not provided"}, status=401)
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+@csrf_protect
+def get_demanda_response(request, demanda_id) -> JsonResponse:
+    """Get the response of a Demanda."""
+    if request.method == "PUT":
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Decodificar o token
+                decoded_token = UntypedToken(token)
+                user_id = decoded_token.get('user_id')
+                
+                # Obter o usuário a partir do ID
+                user = Users.objects.get(id=user_id)
+                
+                if user.role_id.role_name != 'Admin':
+                    return JsonResponse({"error": "Access denied. Only Admins can respond to demandas."}, status=403)
+                
+                data = loads(request.body)
+                demanda = Demanda.objects.get(id=demanda_id)
+                demanda.fluxo = data.get("fluxo", demanda.fluxo)
+                demanda.perspectiva = data.get("perspectiva", demanda.perspectiva)
+                demanda.indicacao_ativa = True
+                demanda.data_resposta = timezone.now()
+                demanda.save()
+
+                # # Enviar email para o Professor
+                # professor_email = demanda.professor_responsavel.email
+                # email_subject = 'Resposta à Demanda'
+                # email_body = (
+                #     f'Olá, {demanda.professor_responsavel.full_name}!\n\n'
+                #     'Sua demanda foi respondida.\n\n'
+                #     f'Fluxo: {demanda.fluxo}\n'
+                #     f'Perspectiva: {demanda.perspectiva}\n\n'
+                #     'Obrigado por utilizar o sci2biz!'
+                # )
+                # send_mail(
+                #     email_subject,
+                #     email_body,
+                #     settings.DEFAULT_FROM_EMAIL,
+                #     [professor_email]
+                # )
+
+                return JsonResponse({"message": "Demanda response updated successfully"}, status=200)
+            except (InvalidToken, TokenError):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+            except Users.DoesNotExist:
+                return JsonResponse({"error": "User not found"}, status=404)
+            except Demanda.DoesNotExist:
+                return JsonResponse({"error": "Demanda not found"}, status=404)
+            except (KeyError, JSONDecodeError):
+                return JsonResponse({"message": "Invalid JSON"}, status=400)
+            except Exception as e:
+                return JsonResponse({"message": str(e)}, status=400)
+        else:
+            return JsonResponse({"error": "Authorization not provided"}, status=401)
+
+
+@csrf_protect
+def update_demanda(request, demanda_id) -> JsonResponse:
+    """Update a Demanda."""
+    if request.method == "PUT":
+        try:
+            data = loads(request.body)
+            demanda = Demanda.objects.get(id=demanda_id)
+
+            demanda.disciplina = data.get("disciplina", demanda.disciplina)
+            demanda.conteudo = data.get("conteudo", demanda.conteudo)
+            demanda.indicacao_ativa = data.get("indicacao_ativa", demanda.indicacao_ativa)
+            demanda.fluxo = data.get("fluxo", demanda.fluxo)
+            demanda.perspectiva = data.get("perspectiva", demanda.perspectiva)
+            demanda.orientacoes_pesquisa = data.get("orientacoes_pesquisa", demanda.orientacoes_pesquisa)
+            demanda.data_resposta = data.get("data_resposta", demanda.data_resposta)
+
+            demanda.save()
+            return JsonResponse({"message": "Demanda updated successfully"}, status=200)
+
+        except Demanda.DoesNotExist:
+            return JsonResponse({"message": "Demanda not found"}, status=404)
+        except (KeyError, JSONDecodeError):
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
+        except Exception as e:
+            return JsonResponse({"message": str(e)}, status=400)
+
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+@csrf_protect
+def delete_demanda(request, demanda_id) -> JsonResponse:
+    """Delete a Demanda."""
+    if request.method == "DELETE":
+        try:
+            demanda = Demanda.objects.get(id=demanda_id)
+            demanda.delete()
+            return JsonResponse({"message": "Demanda deleted successfully"}, status=200)
+
+        except Demanda.DoesNotExist:
+            return JsonResponse({"message": "Demanda not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"message": str(e)}, status=400)
+
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
 

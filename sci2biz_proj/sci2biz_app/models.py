@@ -47,3 +47,16 @@ class Users(AbstractBaseUser, PermissionsMixin):
         if not self.created_at:
             self.created_at = timezone.now().astimezone(pytz_timezone("America/Sao_Paulo"))
         return super(Users, self).save(*args, **kwargs)
+
+class Demanda(models.Model):
+    """Model definition for Demanda."""
+    id = models.AutoField(primary_key=True)
+    disciplina = models.CharField(max_length=200, null=False)
+    conteudo = models.TextField(null=False)
+    indicacao_ativa = models.BooleanField(default=False, null=False)
+    fluxo = models.TextField(null=True)
+    perspectiva = models.TextField(null=True)
+    orientacoes_pesquisa = models.TextField(null=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_resposta = models.DateTimeField(null=True, blank=True)
+    professor_responsavel = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)

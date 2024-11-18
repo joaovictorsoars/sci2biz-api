@@ -165,3 +165,15 @@ EMAIL_USE_TLS = True  # Use TLS para segurança
 EMAIL_HOST_USER = 'rutilenog@gmail.com'  # Seu email do Gmail
 EMAIL_HOST_PASSWORD = 'jftk djvf pwzo ihyk'  # Sua senha do Gmail
 DEFAULT_FROM_EMAIL = 'rutilenog@gmail.com'  # Email padrão para envio
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+}

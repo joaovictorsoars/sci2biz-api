@@ -1,4 +1,3 @@
-
 from django.urls import path
 from . import views
 
@@ -14,4 +13,8 @@ urlpatterns = [
     path('get-csrf-token/', views.get_csrf_token, name='get_csrf_token'),
     path('logged-in/', views.get_user_logged_in, name='logged-in'),
     path('refresh-token/', views.refresh_token, name='refresh-token'),
+    path('demandas/create/', views.create_demanda, name='create_demanda'),
+    path('demandas/', views.list_demandas, name='list_demandas'),
+    path('demandas/update/response/<int:demanda_id>/', views.get_demanda_response, name='response_demanda'),
+    path('demandas/delete/<int:demanda_id>/', views.delete_demanda, name='delete_demanda'),
 ]
