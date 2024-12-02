@@ -51,11 +51,11 @@ def get_user_logged_in(request):
                 }
                 return JsonResponse({"user": user_info})
             except (InvalidToken, TokenError):
-                return JsonResponse({"error": "Invalid Token"}, status=401)
+                return JsonResponse({"error": "Token inválido"}, status=401)
             except Users.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=404)
+                return JsonResponse({"error": "Usuário não encontrado"}, status=404)
         else:
-            return JsonResponse({"error": "Authorization not provided"}, status=401)
+            return JsonResponse({"error": "Autorização não fornecida"}, status=401)
 
 
 def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
@@ -69,11 +69,11 @@ def verify_user_privileges(request) -> Tuple[bool, Union[str, Dict[str, Any]]]:
             user_id = decoded_token.get('user_id')
             user = Users.objects.get(id=user_id)
             if (user.role_id.role_name not in ['Admin', 'Professor']):
-                return False, {"error":"You don't have permissions to do that", "status":403}
+                return False, {"error":"Você não tem permissão para fazer isso", "status":403}
         except Users.DoesNotExist:
-            return False, {"error":"User not found", "status":404}
+            return False, {"error":"Usuário não encontrado", "status":404}
     else:
-        return False, {"error":"Authorization not provided", "status":401}
+        return False, {"error":"Autorização não fornecida", "status":401}
 
     return True, ""
 
@@ -94,7 +94,7 @@ def refresh_token(request):
                 user = Users.objects.get(id=user_id)
 
                 if (user.refresh_token != str(refresh)):
-                    return JsonResponse({"message": "Invalid refresh token"}, status=400)
+                    return JsonResponse({"message": "Token de atualização inválido"}, status=400)
 
                 new_refresh = RefreshToken.for_user(user)
                 user.refresh_token = new_refresh
@@ -102,17 +102,17 @@ def refresh_token(request):
 
                 return JsonResponse({"access_token": str(new_refresh.access_token), "refresh_token": str(new_refresh)}, status=200)
             else:
-                return JsonResponse({"message": "Refresh token is required"}, status=400)
+                return JsonResponse({"message": "Token de atualização é necessário"}, status=400)
 
         except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
+            return JsonResponse({"message": "Usuário não encontrado"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 # Section that handles authentication
 @api_view(['POST'])
@@ -127,14 +127,14 @@ def login(request) -> JsonResponse:
             password = data.get("password")
 
             if (not email or not password):
-                return JsonResponse({"message": "Missing required fields"}, status=400)
+                return JsonResponse({"message": "Campos obrigatórios faltando"}, status=400)
 
             user = Users.objects.get(email=email)
 
             hasher = BCryptSHA256PasswordHasher()
 
             if (not hasher.verify(password, user.password)):
-                return JsonResponse({"message": "Invalid password"}, status=400)
+                return JsonResponse({"message": "Senha inválida"}, status=400)
 
             if user.is_active:
                 user.last_login = timezone.now()
@@ -144,7 +144,7 @@ def login(request) -> JsonResponse:
 
                 return JsonResponse(
                     {
-                        "message": "Login successful",
+                        "message": "Login bem-sucedido",
                         "user": {"full_name": user.full_name, "email": user.email},
                         "access_token": str(refresh.access_token),
                         "refresh_token": str(refresh),
@@ -152,17 +152,17 @@ def login(request) -> JsonResponse:
                     status=200,
                 )
             else:
-                return JsonResponse({"message": "User account is disabled"}, status=403)
+                return JsonResponse({"message": "Conta de usuário desativada"}, status=403)
 
         except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
+            return JsonResponse({"message": "Usuário não encontrado"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
 
@@ -181,10 +181,10 @@ def register(request) -> JsonResponse:
             role_name = data.get("role_name")
 
             if (not full_name or not email or not password or not role_name):
-                return JsonResponse({"message": "Missing required fields"}, status=400)
+                return JsonResponse({"message": "Campos obrigatórios faltando"}, status=400)
             
             if Users.objects.filter(email=email).exists():
-                return JsonResponse({"message": "This email is already registered"}, status=400)
+                return JsonResponse({"message": "Este email já está registrado"}, status=400)
 
             hasher = BCryptSHA256PasswordHasher()
             hashed_password = hasher.encode(password, hasher.salt())
@@ -200,14 +200,14 @@ def register(request) -> JsonResponse:
             user.save()
 
         except Roles.DoesNotExist:
-            return JsonResponse({"message": "Role not found"}, status=404)
+            return JsonResponse({"message": "Função não encontrada"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
         return JsonResponse(
             {
-                "message": "Cadastro successful",
+                "message": "Cadastro bem-sucedido",
                 "user": {
                     "full_name": full_name,
                     "email": email,
@@ -233,7 +233,7 @@ def list_users(request) -> JsonResponse:
         ]
         return JsonResponse({"users": users_list}, status=200)
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
 #Update
@@ -254,7 +254,7 @@ def update_user(request) -> JsonResponse:
                 role_name = data.get("role_name")
                 
                 if not email:
-                    return JsonResponse({"message": "Email is required"}, status=400)
+                    return JsonResponse({"message": "Email é obrigatório"}, status=400)
 
                 user = Users.objects.get(email=email)
 
@@ -267,14 +267,14 @@ def update_user(request) -> JsonResponse:
                     user.role_id = role
 
                 user.save()
-                return JsonResponse({"message": "User updated successfully"}, status=200)
+                return JsonResponse({"message": "Usuário atualizado com sucesso"}, status=200)
 
             except Users.DoesNotExist:
-                return JsonResponse({"message": "User not found"}, status=404)
+                return JsonResponse({"message": "Usuário não encontrado"}, status=404)
             except Roles.DoesNotExist:
-                return JsonResponse({"message": "Role not found"}, status=404)
+                return JsonResponse({"message": "Função não encontrada"}, status=404)
             except (KeyError, JSONDecodeError):
-                return JsonResponse({"message": "Invalid JSON"}, status=400)
+                return JsonResponse({"message": "JSON inválido"}, status=400)
             except Exception as e:
                 return JsonResponse({"message": str(e)}, status=400)
         else:
@@ -282,7 +282,7 @@ def update_user(request) -> JsonResponse:
                 return JsonResponse({"error":text["error"]}, status=text["status"])
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
 #Delete
@@ -300,23 +300,23 @@ def remove_user(request) -> JsonResponse:
                 email = data.get("email")
 
                 if not email:
-                    return JsonResponse({"message": "Email is required"}, status=400)
+                    return JsonResponse({"message": "Email é obrigatório"}, status=400)
 
                 user = Users.objects.get(email=email)
                 user.delete()
-                return JsonResponse({"message": "User deleted successfully"}, status=200)
+                return JsonResponse({"message": "Usuário deletado com sucesso"}, status=200)
 
             except Users.DoesNotExist:
-                return JsonResponse({"message": "User not found"}, status=404)
+                return JsonResponse({"message": "Usuário não encontrado"}, status=404)
             except (KeyError, JSONDecodeError):
-                return JsonResponse({"message": "Invalid JSON"}, status=400)
+                return JsonResponse({"message": "JSON inválido"}, status=400)
             except Exception as e:
                 return JsonResponse({"message": str(e)}, status=400)
         if text:
                 return JsonResponse({"error":text["error"]}, status=text["status"])
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
 # Section that handles user active status
@@ -335,24 +335,24 @@ def toggle_user_active_status(request) -> JsonResponse:
                 email = data.get("email")
 
                 if not email:
-                    return JsonResponse({"message": "Email is required"}, status=400)
+                    return JsonResponse({"message": "Email é obrigat��rio"}, status=400)
 
                 user = Users.objects.get(email=email)
                 user.is_active = not user.is_active
                 user.save(update_fields=["is_active"])
-                return JsonResponse({"message": "User active status changed successfully"}, status=200)
+                return JsonResponse({"message": "Status de atividade do usuário alterado com sucesso"}, status=200)
 
             except Users.DoesNotExist:
-                return JsonResponse({"message": "User not found"}, status=404)
+                return JsonResponse({"message": "Usuário não encontrado"}, status=404)
             except (KeyError, JSONDecodeError):
-                return JsonResponse({"message": "Invalid JSON"}, status=400)
+                return JsonResponse({"message": "JSON inválido"}, status=400)
             except Exception as e:
                 return JsonResponse({"message": str(e)}, status=400)
         if text:
                 return JsonResponse({"error":text["error"]}, status=text["status"])
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405) 
+        return JsonResponse({"message": "Método não permitido"}, status=405) 
 
 
 # Section that handles password reset
@@ -368,33 +368,33 @@ def change_password(request) -> JsonResponse:
             new_password = data.get("new_password")
 
             if (not email or not current_password or not new_password):
-                return JsonResponse({"message": "Missing required fields"}, status=400)
+                return JsonResponse({"message": "Campos obrigatórios faltando"}, status=400)
 
             user = Users.objects.get(email=email)
             hasher = BCryptSHA256PasswordHasher()
 
             if (not hasher.verify(current_password, user.password)):
-                return JsonResponse({"message": "Invalid current password"}, status=400)
+                return JsonResponse({"message": "Senha atual inválida"}, status=400)
 
             # Verifique se a nova senha atende aos requisitos (exemplo simples)
             if (len(new_password) < 8):
-                return JsonResponse({"message": "New password must be at least 8 characters long"}, status=400)
+                return JsonResponse({"message": "A nova senha deve ter pelo menos 8 caracteres"}, status=400)
 
             # Atualize a senha do usuário
             user.password = hasher.encode(new_password, hasher.salt())
             user.save(update_fields=["password"])
 
-            return JsonResponse({"message": "Password changed successfully"}, status=200)
+            return JsonResponse({"message": "Senha alterada com sucesso"}, status=200)
 
         except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
+            return JsonResponse({"message": "Usuário não encontrado"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
 # Section that handles password reset with smtp (send email)
@@ -408,25 +408,25 @@ def request_password_reset(request) -> JsonResponse:
             email = data.get("email")
 
             if not email:
-                return JsonResponse({"message": "Email is required"}, status=400)
+                return JsonResponse({"message": "Email é obrigatório"}, status=400)
 
             user = Users.objects.get(email=email)
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             reset_url = request.build_absolute_uri(reverse('password_reset_confirm', args=[uid, token]))
-            message = f"Click the link below to reset your password:\n{reset_url}"
-            send_mail('Password Reset Request', message, settings.DEFAULT_FROM_EMAIL, [email])
-            return JsonResponse({"message": "Password reset email sent"}, status=200)
+            message = f"Clique no link abaixo para redefinir sua senha:\n{reset_url}"
+            send_mail('Solicitação de Redefinição de Senha', message, settings.DEFAULT_FROM_EMAIL, [email])
+            return JsonResponse({"message": "Email de redefinição de senha enviado"}, status=200)
 
         except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
+            return JsonResponse({"message": "Usuário não encontrado"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 @csrf_protect
 def confirm_password_reset(request, uidb64, token) -> JsonResponse:
@@ -437,7 +437,7 @@ def confirm_password_reset(request, uidb64, token) -> JsonResponse:
             new_password = data.get("new_password")
 
             if not new_password:
-                return JsonResponse({"message": "New password is required"}, status=400)
+                return JsonResponse({"message": "A nova senha é obrigatória"}, status=400)
 
             uid = force_str(urlsafe_base64_decode(uidb64))
             user = Users.objects.get(pk=uid)
@@ -446,19 +446,19 @@ def confirm_password_reset(request, uidb64, token) -> JsonResponse:
                 hasher = BCryptSHA256PasswordHasher()
                 user.password = hasher.encode(new_password, hasher.salt())
                 user.save(update_fields=["password"])
-                return JsonResponse({"message": "Password has been reset"}, status=200)
+                return JsonResponse({"message": "Senha redefinida com sucesso"}, status=200)
             else:
-                return JsonResponse({"message": "Invalid token"}, status=400)
+                return JsonResponse({"message": "Token inválido"}, status=400)
 
         except Users.DoesNotExist:
-            return JsonResponse({"message": "User not found"}, status=404)
+            return JsonResponse({"message": "Usuário não encontrado"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
 # Section that handles role registration
@@ -472,10 +472,10 @@ def register_role(request):
             role.save()
 
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
-        return JsonResponse({"message": "Role registered", "role_name": role_name})
+        return JsonResponse({"message": "Função registrada", "role_name": role_name})
 
 
 @csrf_protect
@@ -494,15 +494,15 @@ def create_demanda(request) -> JsonResponse:
                 user = Users.objects.get(id=user_id)
                 
                 if user.role_id.role_name != 'Professor':
-                    return JsonResponse({"error": "Access denied. Only Professors can create demandas."}, status=403)
+                    return JsonResponse({"error": "Acesso negado. Apenas Professores podem criar demandas."}, status=403)
                 
                 data = loads(request.body)
                 disciplina = data.get("disciplina")
                 conteudo = data.get("conteudo")
                 tipo_demanda = data.get("tipo_demanda")
 
-                if not disciplina or not conteudo or not tipo_demanda:
-                    return JsonResponse({"message": "Missing required fields"}, status=400)
+                if not disciplina ou not conteudo ou not tipo_demanda:
+                    return JsonResponse({"message": "Campos obrigatórios faltando"}, status=400)
 
                 tipos_validos = {"Extensão", "Ensino", "Pesquisa"}
                 if not set(tipo_demanda).issubset(tipos_validos):
