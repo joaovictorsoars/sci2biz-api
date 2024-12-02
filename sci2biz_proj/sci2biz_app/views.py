@@ -501,12 +501,12 @@ def create_demanda(request) -> JsonResponse:
                 conteudo = data.get("conteudo")
                 tipo_demanda = data.get("tipo_demanda")
 
-                if not disciplina ou not conteudo ou not tipo_demanda:
+                if not disciplina or not conteudo or not tipo_demanda:
                     return JsonResponse({"message": "Campos obrigatórios faltando"}, status=400)
 
                 tipos_validos = {"Extensão", "Ensino", "Pesquisa"}
                 if not set(tipo_demanda).issubset(tipos_validos):
-                    return JsonResponse({"message": "Invalid tipo_demanda"}, status=400)
+                    return JsonResponse({"message": "Tipo de demanda inválido"}, status=400)
 
                 demanda = Demanda(
                     disciplina=disciplina,
@@ -533,20 +533,20 @@ def create_demanda(request) -> JsonResponse:
                     admin_emails
                 )
 
-                return JsonResponse({"message": "Demanda created successfully"}, status=201)
+                return JsonResponse({"message": "Demanda criada com sucesso"}, status=201)
 
             except (InvalidToken, TokenError):
-                return JsonResponse({"error": "Invalid Token"}, status=401)
+                return JsonResponse({"error": "Token inválido"}, status=401)
             except Users.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=404)
+                return JsonResponse({"error": "Usuário não encontrado"}, status=404)
             except (KeyError, JSONDecodeError):
-                return JsonResponse({"message": "Invalid JSON"}, status=400)
+                return JsonResponse({"message": "JSON inválido"}, status=400)
             except Exception as e:
                 return JsonResponse({"message": str(e)}, status=400)
         else:
-            return JsonResponse({"error": "Authorization not provided"}, status=401)
+            return JsonResponse({"error": "Autorização não fornecida"}, status=401)
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 @csrf_protect
 def list_demandas(request) -> JsonResponse:
@@ -564,7 +564,7 @@ def list_demandas(request) -> JsonResponse:
                 user = Users.objects.get(id=user_id)
                 
                 if user.role_id.role_name != 'Admin':
-                    return JsonResponse({"error": "Access denied. Only Admins can access demandas."}, status=403)
+                    return JsonResponse({"error": "Acesso negado. Apenas Admins podem acessar demandas."}, status=403)
                 
                 demandas = Demanda.objects.all().order_by('-data_criacao')
                 demandas_list = [
@@ -584,13 +584,13 @@ def list_demandas(request) -> JsonResponse:
                 ]
                 return JsonResponse({"demandas": demandas_list}, status=200)
             except (InvalidToken, TokenError):
-                return JsonResponse({"error": "Invalid Token"}, status=401)
+                return JsonResponse({"error": "Token inválido"}, status=401)
             except Users.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=404)
+                return JsonResponse({"error": "Usuário não encontrado"}, status=404)
         else:
-            return JsonResponse({"error": "Authorization not provided"}, status=401)
+            return JsonResponse({"error": "Autorização não fornecida"}, status=401)
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 @csrf_protect
 def get_demanda_response(request, demanda_id) -> JsonResponse:
@@ -608,7 +608,7 @@ def get_demanda_response(request, demanda_id) -> JsonResponse:
                 user = Users.objects.get(id=user_id)
                 
                 if user.role_id.role_name != 'Admin':
-                    return JsonResponse({"error": "Access denied. Only Admins can respond to demandas."}, status=403)
+                    return JsonResponse({"error": "Acesso negado. Apenas Admins podem responder a demandas."}, status=403)
                 
                 data = loads(request.body)
                 demanda = Demanda.objects.get(id=demanda_id)
@@ -635,19 +635,19 @@ def get_demanda_response(request, demanda_id) -> JsonResponse:
                     [professor_email]
                 )
 
-                return JsonResponse({"message": "Demanda response updated successfully"}, status=200)
+                return JsonResponse({"message": "Resposta à demanda atualizada com sucesso"}, status=200)
             except (InvalidToken, TokenError):
-                return JsonResponse({"error": "Invalid Token"}, status=401)
+                return JsonResponse({"error": "Token inválido"}, status=401)
             except Users.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=404)
+                return JsonResponse({"error": "Usuário não encontrado"}, status=404)
             except Demanda.DoesNotExist:
-                return JsonResponse({"error": "Demanda not found"}, status=404)
+                return JsonResponse({"error": "Demanda não encontrada"}, status=404)
             except (KeyError, JSONDecodeError):
-                return JsonResponse({"message": "Invalid JSON"}, status=400)
+                return JsonResponse({"message": "JSON inválido"}, status=400)
             except Exception as e:
                 return JsonResponse({"message": str(e)}, status=400)
         else:
-            return JsonResponse({"error": "Authorization not provided"}, status=401)
+            return JsonResponse({"error": "Autorização não fornecida"}, status=401)
 
 
 @csrf_protect
@@ -667,17 +667,17 @@ def update_demanda(request, demanda_id) -> JsonResponse:
             demanda.data_resposta = data.get("data_resposta", demanda.data_resposta)
 
             demanda.save()
-            return JsonResponse({"message": "Demanda updated successfully"}, status=200)
+            return JsonResponse({"message": "Demanda atualizada com sucesso"}, status=200)
 
         except Demanda.DoesNotExist:
-            return JsonResponse({"message": "Demanda not found"}, status=404)
+            return JsonResponse({"message": "Demanda não encontrada"}, status=404)
         except (KeyError, JSONDecodeError):
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "JSON inválido"}, status=400)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 @csrf_protect
 def delete_demanda(request, demanda_id) -> JsonResponse:
@@ -686,15 +686,15 @@ def delete_demanda(request, demanda_id) -> JsonResponse:
         try:
             demanda = Demanda.objects.get(id=demanda_id)
             demanda.delete()
-            return JsonResponse({"message": "Demanda deleted successfully"}, status=200)
+            return JsonResponse({"message": "Demanda deletada com sucesso"}, status=200)
 
         except Demanda.DoesNotExist:
-            return JsonResponse({"message": "Demanda not found"}, status=404)
+            return JsonResponse({"message": "Demanda não encontrada"}, status=404)
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 @csrf_protect
 def create_turma(request) -> JsonResponse:
@@ -712,14 +712,14 @@ def create_turma(request) -> JsonResponse:
                 user = Users.objects.get(id=user_id)
                 
                 if user.role_id.role_name != 'Professor':
-                    return JsonResponse({"error": "Access denied. Only Professors can create turmas."}, status=403)
+                    return JsonResponse({"error": "Acesso negado. Apenas Professores podem criar turmas."}, status=403)
                 
                 data = loads(request.body)
                 demanda_id = data.get("demanda_id")
                 nome = data.get("nome")
 
                 if not demanda_id or not nome:
-                    return JsonResponse({"message": "Missing required fields"}, status=400)
+                    return JsonResponse({"message": "Campos obrigatórios faltando"}, status=400)
 
                 demanda = Demanda.objects.get(id=demanda_id)
 
@@ -730,21 +730,21 @@ def create_turma(request) -> JsonResponse:
                 )
                 turma.save()
 
-                return JsonResponse({"message": "Turma created successfully"}, status=201)
+                return JsonResponse({"message": "Turma criada com sucesso"}, status=201)
 
             except (InvalidToken, TokenError):
-                return JsonResponse({"error": "Invalid Token"}, status=401)
+                return JsonResponse({"error": "Token inválido"}, status=401)
             except Users.DoesNotExist:
-                return JsonResponse({"error": "User not found"}, status=404)
+                return JsonResponse({"error": "Usuário não encontrado"}, status=404)
             except Demanda.DoesNotExist:
-                return JsonResponse({"error": "Demanda not found"}, status=404)
+                return JsonResponse({"error": "Demanda não encontrada"}, status=404)
             except (KeyError, JSONDecodeError):
-                return JsonResponse({"message": "Invalid JSON"}, status=400)
+                return JsonResponse({"message": "JSON inválido"}, status=400)
             except Exception as e:
                 return JsonResponse({"message": str(e)}, status=400)
         else:
-            return JsonResponse({"error": "Authorization not provided"}, status=401)
+            return JsonResponse({"error": "Autorização não fornecida"}, status=401)
     else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
+        return JsonResponse({"message": "Método não permitido"}, status=405)
 
 
