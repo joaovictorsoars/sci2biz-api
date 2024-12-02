@@ -15,7 +15,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from typing import Tuple, Dict, Union, Any
 from rest_framework import viewsets
-from .models import Users, Demanda, Turma
+from .models import Users, Demanda, Turma, GrupoTurmas, UsuarioTurma
 from .serializers import UserSerializer
 from rest_framework.decorators import (
     api_view,
@@ -956,7 +956,14 @@ def add_student(request) -> JsonResponse:
                     },
                 )
 
-                UsuarioTurma.objects.create(turma_id=turma, usuario_id=student)
+                if UsuarioTurma.objects.filter(turma_id=turma, usuario_id=student).exists():
+                    return JsonResponse({"message": "Aluno já está em uma turma"}, status=400)
+
+                UsuarioTurma.objects.create(
+                    turma_id=turma, 
+                    usuario_id=student,
+                    grupo_id=GrupoTurmas.objects.filter(turma_id=turma).first()
+                )
 
                 # Enviar email para o aluno
                 email_subject = "Cadastro na Turma"

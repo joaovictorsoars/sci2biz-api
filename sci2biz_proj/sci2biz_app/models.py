@@ -79,4 +79,4 @@ class UsuarioTurma(models.Model):
     """Model definition for UsuarioTurma."""
     turma_id = models.ForeignKey(Turma, on_delete=models.CASCADE, null=False)
     usuario_id = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)
-    grupo_id = models.ForeignKey(GrupoTurmas, on_delete=models.CASCADE, null=False)
+    grupo_id = models.ForeignKey(GrupoTurmas, on_delete=models.CASCADE, null=True)

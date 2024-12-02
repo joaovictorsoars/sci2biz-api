@@ -18,7 +18,7 @@ urlpatterns = [
     path('demandas/update/response/<int:demanda_id>/', views.get_demanda_response, name='response_demanda'),
     path('demandas/delete/<int:demanda_id>/', views.delete_demanda, name='delete_demanda'),
     path('turmas/create/', views.create_turma, name='create_turma'),
-    path('turmas/add_monitor/', views.add_monitor, name='add_monitor'),
-    path('turmas/add_student/', views.add_student, name='add_student'),
-    path('turmas/import_students/', views.import_students, name='import_students'),
+    path('turmas/add/monitor/', views.add_monitor, name='add_monitor'),
+    path('turmas/add/student/', views.add_student, name='add_student'),
+    path('turmas/add/students/import', views.import_students, name='import_students'),
 ]

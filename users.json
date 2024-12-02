@@ -24,5 +24,10 @@
         "username" : "Kayo",
         "email" : "kayo@ufrn.br",
         "password": "kayo@123"
+    },
+    {
+        "username" : "eu2",
+        "email" : "rutilenog@gmail.com",
+        "password": "1234"
     }
 ]
