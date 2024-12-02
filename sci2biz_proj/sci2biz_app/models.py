@@ -60,3 +60,23 @@ class Demanda(models.Model):
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_resposta = models.DateTimeField(null=True, blank=True)
     professor_responsavel = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)
+
+class Turma(models.Model):
+    """Model definition for Turma."""
+    id = models.AutoField(primary_key=True)
+    demanda_id = models.ForeignKey(Demanda, on_delete=models.CASCADE, null=False)
+    nome = models.CharField(max_length=200, null=False)
+    professor_id = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)
+
+class GrupoTurmas(models.Model):
+    """Model definition for GrupoTurmas."""
+    id = models.AutoField(primary_key=True)
+    turma_id = models.ForeignKey(Turma, on_delete=models.CASCADE, null=False)
+    lider_id = models.ForeignKey(Users, on_delete=models.CASCADE, null=True)
+    nome = models.CharField(max_length=5000, null=False)
+
+class UsuarioTurma(models.Model):
+    """Model definition for UsuarioTurma."""
+    turma_id = models.ForeignKey(Turma, on_delete=models.CASCADE, null=False)
+    usuario_id = models.ForeignKey(Users, on_delete=models.CASCADE, null=False)
+    grupo_id = models.ForeignKey(GrupoTurmas, on_delete=models.CASCADE, null=False)

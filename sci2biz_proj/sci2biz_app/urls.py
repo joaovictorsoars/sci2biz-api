@@ -17,4 +17,5 @@ urlpatterns = [
     path('demandas/', views.list_demandas, name='list_demandas'),
     path('demandas/update/response/<int:demanda_id>/', views.get_demanda_response, name='response_demanda'),
     path('demandas/delete/<int:demanda_id>/', views.delete_demanda, name='delete_demanda'),
+    path('turmas/create/', views.create_turma, name='create_turma'),
 ]

@@ -15,7 +15,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from typing import Tuple, Dict, Union, Any
 from rest_framework import viewsets
-from .models import Users, Demanda
+from .models import Users, Demanda, Turma
 from .serializers import UserSerializer
 from rest_framework.decorators import api_view, schema, authentication_classes, permission_classes
 
@@ -618,22 +618,22 @@ def get_demanda_response(request, demanda_id) -> JsonResponse:
                 demanda.data_resposta = timezone.now()
                 demanda.save()
 
-                # # Enviar email para o Professor
-                # professor_email = demanda.professor_responsavel.email
-                # email_subject = 'Resposta à Demanda'
-                # email_body = (
-                #     f'Olá, {demanda.professor_responsavel.full_name}!\n\n'
-                #     'Sua demanda foi respondida.\n\n'
-                #     f'Fluxo: {demanda.fluxo}\n'
-                #     f'Perspectiva: {demanda.perspectiva}\n\n'
-                #     'Obrigado por utilizar o sci2biz!'
-                # )
-                # send_mail(
-                #     email_subject,
-                #     email_body,
-                #     settings.DEFAULT_FROM_EMAIL,
-                #     [professor_email]
-                # )
+                # Enviar email para o Professor
+                professor_email = demanda.professor_responsavel.email
+                email_subject = 'Resposta à Demanda'
+                email_body = (
+                    f'Olá, {demanda.professor_responsavel.full_name}!\n\n'
+                    'Sua demanda foi respondida.\n\n'
+                    f'Fluxo: {demanda.fluxo}\n'
+                    f'Perspectiva: {demanda.perspectiva}\n\n'
+                    'Obrigado por utilizar o sci2biz!'
+                )
+                send_mail(
+                    email_subject,
+                    email_body,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [professor_email]
+                )
 
                 return JsonResponse({"message": "Demanda response updated successfully"}, status=200)
             except (InvalidToken, TokenError):
@@ -693,6 +693,57 @@ def delete_demanda(request, demanda_id) -> JsonResponse:
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=400)
 
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+@csrf_protect
+def create_turma(request) -> JsonResponse:
+    """Create a new Turma."""
+    if request.method == "POST":
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Decodificar o token
+                decoded_token = UntypedToken(token)
+                user_id = decoded_token.get('user_id')
+                
+                # Obter o usuário a partir do ID
+                user = Users.objects.get(id=user_id)
+                
+                if user.role_id.role_name != 'Professor':
+                    return JsonResponse({"error": "Access denied. Only Professors can create turmas."}, status=403)
+                
+                data = loads(request.body)
+                demanda_id = data.get("demanda_id")
+                nome = data.get("nome")
+
+                if not demanda_id or not nome:
+                    return JsonResponse({"message": "Missing required fields"}, status=400)
+
+                demanda = Demanda.objects.get(id=demanda_id)
+
+                turma = Turma(
+                    demanda_id=demanda,
+                    nome=nome,
+                    professor_id=user,
+                )
+                turma.save()
+
+                return JsonResponse({"message": "Turma created successfully"}, status=201)
+
+            except (InvalidToken, TokenError):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+            except Users.DoesNotExist:
+                return JsonResponse({"error": "User not found"}, status=404)
+            except Demanda.DoesNotExist:
+                return JsonResponse({"error": "Demanda not found"}, status=404)
+            except (KeyError, JSONDecodeError):
+                return JsonResponse({"message": "Invalid JSON"}, status=400)
+            except Exception as e:
+                return JsonResponse({"message": str(e)}, status=400)
+        else:
+            return JsonResponse({"error": "Authorization not provided"}, status=401)
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
